@@ -183,7 +183,6 @@ end
 
 
 service "swift-proxy" do
-  restart_command "/etc/init.d/swift-proxy stop ; /etc/init.d/swift-proxy start"
   action [:enable, :start]
 end
 
