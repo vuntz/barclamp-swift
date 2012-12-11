@@ -83,5 +83,12 @@ template "/etc/swift/dispersion.conf" do
     :auth_url => keystone_auth_url
   )
   only_if "swift-recon --md5 | grep -q '0 error'"
-  notifies :run, "execute[populate-dispersion]", :immediately
+  notifies :run, "execute[populate-dispersion]"
+end
+
+ruby_block "rerun_dispersion_populate" do
+  block do
+  end
+  only_if { File.exist?("/etc/swift/dispersion.conf") }
+  notifies :run, "execute[populate-dispersion]"
 end

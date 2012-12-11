@@ -101,6 +101,7 @@ locale_additions:
           slog_account: sLogging swift account
           slog_user: sLogging swift user
           slog_passwd: sLogging swift user's password
+          swift_dispersion_error: swift-dispestion should be deployed only on swift-proxy
           middlewares:
             label: Additional middlewares
             enabled: Enabled
