@@ -188,7 +188,7 @@ end
 ## we use their memcached!
 servers =""
 env_filter = " AND swift_config_environment:#{node[:swift][:config][:environment]}"
-result= search(:node, "(roles:swift-proxy OR roles:swift-proxy-acct) #{env_filter}")
+result= search(:node, "roles:swift-proxy#{env_filter}")
 if !result.nil? and (result.length > 0)  
   memcached_servers = result.map {|x|
     s = Swift::Evaluator.get_ip_by_type(x, :admin_ip_expr)     
@@ -203,14 +203,6 @@ proxy_config[:memcached_ips] = servers
 
 
 
-## Create the proxy server configuraiton file
-template "/etc/swift/proxy-server.conf" do
-  source     "proxy-server.conf.erb"
-  mode       "0644"
-  group       node[:swift][:group]
-  owner       node[:swift][:user]
-  variables   proxy_config
-end
 
 ## install a default memcached instsance.
 ## default configuration is take from: node[:memcached] / [:memory], [:port] and [:user] 
@@ -230,9 +222,19 @@ end
 bash "restart swift proxy things" do
   code <<-EOH
 EOH
-  action :run
+  action :nothing
   notifies :restart, resources(:service => "memcached-swift-proxy")
   notifies :restart, resources(:service => "swift-proxy")
+end
+
+## Create the proxy server configuraiton file
+template "/etc/swift/proxy-server.conf" do
+  source     "proxy-server.conf.erb"
+  mode       "0644"
+  group       node[:swift][:group]
+  owner       node[:swift][:user]
+  variables   proxy_config
+  notifies :run, resources(:bash => "restart swift proxy things") 
 end
 
 ### 

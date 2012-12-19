@@ -24,6 +24,7 @@ unless node[:swift][:use_gitrepo]
 else
   pfs_and_install_deps(@cookbook_name)
   create_user_and_dirs(@cookbook_name) do
+    opt_dirs ["/var/cache/swift"]
     user_name node[:swift][:user]
     dir_group node[:swift][:group]
   end

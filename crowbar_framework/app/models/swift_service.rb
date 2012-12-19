@@ -26,6 +26,13 @@ class SwiftService < ServiceObject
     true
   end
 
+  def validate_proposal proposal
+    super proposal
+    unless proposal["deployment"][@bc_name]["elements"]["swift-proxy"].include? proposal["deployment"][@bc_name]["elements"]["swift-dispersion"].first
+      raise I18n.t("barclamp.#{@bc_name}.edit_attributes.swift_dispersion_error")
+    end
+  end
+
   def proposal_dependencies(role)
     answer = []
     if role.default_attributes["swift"]["auth_method"] == "keystone"
@@ -87,7 +94,7 @@ class SwiftService < ServiceObject
 
     if nodes.size == 1
       base["deployment"]["swift"]["elements"] = {
-        "swift-proxy-acct" => [ nodes.first[:fqdn] ],
+        "swift-proxy" => [ nodes.first[:fqdn] ],
         "swift-dispersion" => [ nodes.first[:fqdn] ],
         "swift-ring-compute" => [ nodes.first[:fqdn] ],
         "swift-storage" => [ nodes.first[:fqdn] ]
@@ -96,7 +103,7 @@ class SwiftService < ServiceObject
       head = nodes.shift
       base["deployment"]["swift"]["elements"] = {
         "swift-dispersion" => [ head[:fqdn] ],
-        "swift-proxy-acct" => [ head[:fqdn] ],
+        "swift-proxy" => [ head[:fqdn] ],
         "swift-ring-compute" => [ head[:fqdn] ],
         "swift-storage" => nodes.map { |x| x[:fqdn] }
       }
@@ -112,13 +119,11 @@ class SwiftService < ServiceObject
 
     # Make sure that the front-end pieces have public ip addreses.
     net_svc = NetworkService.new @logger
-    [ "swift-proxy", "swift-proxy-acct" ].each do |element|
-      tnodes = role.override_attributes["swift"]["elements"][element]
-      next if tnodes.nil? or tnodes.empty?
-      tnodes.each do |n|
-        next if n.nil?
-        net_svc.allocate_ip "default", "public", "host", n
-      end
+    tnodes = role.override_attributes["swift"]["elements"]["swift-proxy"]
+    next if tnodes.nil? or tnodes.empty?
+    tnodes.each do |n|
+      next if n.nil?
+      net_svc.allocate_ip "default", "public", "host", n
     end
 
     all_nodes.each do |n|

@@ -16,10 +16,11 @@
 # Author: andi abes
 #
 
-name "swift-storage"
-description "configures a swift storage node, including partitioning disks, formatting them as XFS"
-
-run_list(
-    "recipe[swift::default]",
-    "recipe[swift::storage_prepare]"
-)
+env_filter = " AND swift_config_environment:#{node[:swift][:config][:environment]}"
+compute_nodes = search(:node, "roles:swift-ring-compute#{env_filter}")
+if (!compute_nodes.nil? and compute_nodes.length > 0 )
+  if compute_nodes[0][:swift][:ring_init_done]
+    include_recipe 'swift::proxy'
+    include_recipe 'swift::monitor'
+  end
+end
