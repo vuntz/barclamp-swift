@@ -74,6 +74,12 @@ execute "populate-dispersion" do
   only_if "swift -V 2.0 -U #{service_tenant}:#{service_user} -K '#{service_password}' -A #{keystone_auth_url} stat dispersion_objects 2>&1 | grep 'Container.*not found'"
 end
 
+#TODO(agordeev): remove that workaround once packaged swiftclient be ready
+cookbook_file "/usr/lib/python2.7/dist-packages/swiftclient/client.py" do
+  mode "0664"
+  source "client.py"
+end
+
 template "/etc/swift/dispersion.conf" do
   source     "disperse.conf.erb"
   mode       "0600"
