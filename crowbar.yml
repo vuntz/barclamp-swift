@@ -175,5 +175,5 @@ debs:
     - swift-plugin-s3
 
 git_repo:
-  - swift http://github.com/openstack/swift.git stable/folsom
-  - swift3 http://github.com/fujita/swift3 master
+  - swift https://github.com/openstack/swift.git stable/folsom
+  - swift3 https://github.com/fujita/swift3 master
