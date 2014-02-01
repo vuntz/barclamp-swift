@@ -1,18 +1,26 @@
-#Proxy
-NameVirtualHost *:<%= @proxy_port %>
 Listen <%= @proxy_port %>
 <VirtualHost *:<%= @proxy_port %>>
-    ServerName proxy-server
-    LimitRequestBody 5368709122
-    WSGIDaemonProcess proxy-server user=<%= @proxy_user %> group=<%= @proxy_group %> processes=<%= @processes %> threads=<%= @threads %>
-    WSGIProcessGroup proxy-server
-    WSGIScriptAlias / /usr/lib/cgi-bin/swift/proxy
-    LimitRequestFields 200
-    ErrorLog /var/log/apache2/proxy-server
-    LogLevel info
-    CustomLog /var/log/apache2/proxy.log combined
+    ServerName swift-proxy-server
+
+    ErrorLog /var/log/apache2/swift-proxy-server-error_log
+    TransferLog /var/log/apache2/swift-proxy-server-access_log
+    LogLevel warn
+
     SSLEngine on
-    SSLCertificateFile /etc/swift/cert.crt
-    SSLCertificateKeyFile /etc/swift/cert.key
+    SSLCertificateFile <%= @ssl_crt_file %>
+    SSLCertificateKeyFile <%= @ssl_key_file %>
+
+    WSGIDaemonProcess swift-proxy-server user=<%= @proxy_user %> group=<%= @proxy_group %> processes=5 threads=1
+    WSGIProcessGroup swift-proxy-server
+
+    WSGIScriptAlias / /var/lib/swift/wsgi/proxy-server.wsgi
+    <Directory /var/lib/swift/wsgi/>
+        Order allow,deny
+        Allow from all
+    </Directory>
+
+    LimitRequestFields 200
+    # same value as in swift.conf
+    LimitRequestBody 5368709122
 </VirtualHost>
 

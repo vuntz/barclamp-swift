@@ -261,6 +261,10 @@ end
 proxy_config[:memcached_ips] = servers
 
 
+if node[:platform] == "suse"
+  include_recipe "apache2"
+end
+
 
 ## Create the proxy server configuraiton file
 template "/etc/swift/proxy-server.conf" do
@@ -269,6 +273,9 @@ template "/etc/swift/proxy-server.conf" do
   group       node[:swift][:group]
   owner       node[:swift][:user]
   variables   proxy_config
+  if node[:swift][:frontend]=='apache' and node[:platform] == "suse"
+    notifies :restart, resources(:service => "apache2")
+  end
 end
 
 ## install a default memcached instsance.
@@ -296,6 +303,18 @@ if (!compute_nodes.nil? and compute_nodes.length > 0 and node[:fqdn]!=compute_no
 end
 
 if node[:swift][:frontend]=='native'
+  if node[:platform] == "suse" and ::File.exist?("#{node[:apache][:dir]}/vhosts.d/openstack-swift.conf")
+    apache_site "openstack-swift.conf" do
+      enable false
+    end
+    file "#{node[:apache][:dir]}/vhosts.d/openstack-swift.conf" do
+      action :delete
+    end
+    file "/etc/logrotate.d/openstack-swift-apache" do
+      action :delete
+    end
+  end
+
   if node[:swift][:use_gitrepo]
     swift_service "swift-proxy" do
       virtualenv venv_path
@@ -310,6 +329,61 @@ if node[:swift][:frontend]=='native'
       restart_command "stop swift-proxy ; start swift-proxy"
     end
     action [:enable, :start]
+  end
+
+elsif node[:swift][:frontend]=='apache' and node[:platform] == "suse"
+  service "swift-proxy" do
+    service_name "openstack-swift-proxy" if %w(redhat centos suse).include?(node.platform)
+    supports :status => true, :restart => true
+    action [ :disable, :stop ]
+  end
+
+  include_recipe "apache2::mod_ssl"
+  include_recipe "apache2::mod_wsgi"
+
+  # See http://docs.openstack.org/developer/swift/apache_deployment_guide.html
+
+  directory "/var/lib/swift" do
+    owner node[:swift][:user]
+    group node[:swift][:group]
+    action :create
+  end
+
+  directory "/var/lib/swift/wsgi" do
+    owner node[:swift][:user]
+    group node[:swift][:group]
+    action :create
+  end
+
+  cookbook_file "/var/lib/swift/wsgi/proxy-server.wsgi" do
+    source "proxy-server.wsgi"
+    owner "root"
+    group node[:swift][:group]
+    mode "0644"
+  end
+
+  template "#{node[:apache][:dir]}/vhosts.d/openstack-swift.conf" do
+    source "apache-swift-proxy.conf.erb"
+    mode 0644
+    variables(
+        :proxy_user => node[:swift][:user],
+        :proxy_group => node[:swift][:group],
+        :proxy_port => 8080,
+        :ssl_crt_file => "/etc/swift/cert.crt",
+        :ssl_key_file => "/etc/swift/cert.key"
+    )
+    notifies :reload, resources(:service => "apache2"), :immediately
+  end
+
+  apache_site "openstack-swift.conf" do
+    enable true
+  end
+
+  cookbook_file "/etc/logrotate.d/openstack-swift-apache" do
+    source "apache-swift-proxy.logrotate"
+    owner "root"
+    group "root"
+    mode "0644"
   end
 elsif node[:swift][:frontend]=='apache'
 
